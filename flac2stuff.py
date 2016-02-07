@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #Version 3
 # vim: ts=4 autoindent expandtab number
 """
@@ -72,7 +72,7 @@ class vorbis:
                 shell().parseEscapechars(infile),
                 oggencopts,
                 shell().parseEscapechars(outfile)),
-            stdout=open(os.devnull,'wb'), stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
+            stdout=sp.DEVNULL, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
 
         conversion_process.communicate()
 
@@ -82,7 +82,7 @@ class vorbis:
         jpeg_process = sp.Popen("%sffmpeg -loglevel panic -i %s -an -c:v copy -f mjpeg - " % (
                 oggencpath,
                 shell().parseEscapechars(infile)),
-            stdout=sp.PIPE, stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
+            stdout=sp.PIPE, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
 
         (stdout_data, stderr_data) = jpeg_process.communicate()
         data = bytearray(stdout_data)
@@ -114,17 +114,17 @@ class vorbis:
             data_complete_b64 = base64.b64encode(data_complete)
 
             #read all the comments from the fresh ogg file
-            meta_process = sp.Popen("vorbiscomment -l %s.ogg" % (shell().parseEscapechars(outfile)),
-                stdout=sp.PIPE, stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
+            meta_process = sp.Popen("vorbiscomment -R -l %s.ogg" % (shell().parseEscapechars(outfile)),
+                stdout=sp.PIPE, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
 
             (stdout_data, stderr_data) = meta_process.communicate()
             
             #add our coverart tag to the comments
-            metadata = stdout_data + "METADATA_BLOCK_PICTURE=" + data_complete_b64 
+            metadata = stdout_data + "METADATA_BLOCK_PICTURE=".encode('utf-8') + data_complete_b64
 
             #rewrite the comments to the ogg file
-            meta_process = sp.Popen("vorbiscomment -w %s.ogg" % (shell().parseEscapechars(outfile)),
-                stdout=open(os.devnull,'wb'), stdin=sp.PIPE, stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
+            meta_process = sp.Popen("vorbiscomment -R -w %s.ogg" % (shell().parseEscapechars(outfile)),
+                stdout=sp.DEVNULL, stdin=sp.PIPE, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
 
             meta_process.communicate(metadata)
 
@@ -302,7 +302,7 @@ class mp3:
             shell().parseEscapechars(infile),
             lameopts,
             shell().parseEscapechars(outfile)),
-            stdout=open(os.devnull,'wb'), stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
+            stdout=sp.DEVNULL, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
 
         conversion_process.communicate()
 
