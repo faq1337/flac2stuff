@@ -425,8 +425,8 @@ def encode_thread(current_file,filecounter,opts):
 
                 if(opts['mode'] == "mp3"):
                     mp3Class.mp3convert(opts['lameopts'],current_file,outfile)
-                elif(opts['mode'] == "flac"):
-                    flacClass.flacconvert(opts['flacopts'],current_file,outfile)
+                #elif(opts['mode'] == "flac"):
+                    #flacClass.flacconvert(opts['flacopts'],current_file,outfile)
                 elif(opts['mode'] == "vorbis"):
                     vorbisClass.oggconvert(opts['oggencopts'],current_file,outfile)
                 elif(opts['mode'] == "test"):
@@ -448,8 +448,8 @@ def encode_thread(current_file,filecounter,opts):
 
             if(opts['mode'] == "mp3"):
                 mp3Class.mp3convert(opts['lameopts'],current_file,outfile)
-            elif(opts['mode'] == "flac"):
-                flacClass.flacconvert(opts['flacopts'],current_file,outfile)
+            #elif(opts['mode'] == "flac"):
+                #flacClass.flacconvert(opts['flacopts'],current_file,outfile)
             elif(opts['mode'] == "vorbis"):
                 vorbisClass.oggconvert(opts['oggencopts'],current_file,outfile)
             elif(opts['mode'] == "test"):
