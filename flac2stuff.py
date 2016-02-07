@@ -47,8 +47,12 @@ import threading,time,multiprocessing
 import subprocess as sp
 import base64
 import struct
+import signal
 
 #CODE
+
+def preexec_function():
+    os.setpgrp()
 
 #Class that deals with vorbis
 class vorbis:
@@ -63,29 +67,25 @@ class vorbis:
         #converted to be displayed
         print(shell().parseEscapechars(infile))
 
+        conversion_process = sp.Popen("%sffmpeg -loglevel panic -i %s -y -vn %s %s.ogg" % (
+                oggencpath,
+                shell().parseEscapechars(infile),
+                oggencopts,
+                shell().parseEscapechars(outfile)),
+            stdout=open(os.devnull,'wb'), stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
 
-        os.system("%sffmpeg -loglevel panic -i %s -y -vn %s %s.ogg" % (
-            oggencpath,
-            shell().parseEscapechars(infile),
-            oggencopts,
-            shell().parseEscapechars(outfile))
-            )
-
+        conversion_process.communicate()
 
         #coverart------------------------------------------------------
 
         #exctract coverart as jpeg and read it in
-        jpegpipe = os.popen("%sffmpeg -loglevel panic -i %s -an -c:v copy -f mjpeg - " %
-            (
-            oggencpath,
-            shell().parseEscapechars(infile)
-            )
-        )
+        jpeg_process = sp.Popen("%sffmpeg -loglevel panic -i %s -an -c:v copy -f mjpeg - " % (
+                oggencpath,
+                shell().parseEscapechars(infile)),
+            stdout=sp.PIPE, stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
 
-        f = jpegpipe.read()
-        data = bytearray(f)
-        jpegpipe.flush()
-        jpegpipe.close()
+        (stdout_data, stderr_data) = jpeg_process.communicate()
+        data = bytearray(stdout_data)
 
         if len(data) > 0:
             #write the header that is required for the binary data
@@ -107,27 +107,26 @@ class vorbis:
                     int_height,
                     int_depth,
                     int_index,
-                    len(data),
+                    len(data)
                     )
             #merge header with binary data and convert everything to base64
             data_complete = data_header + data
             data_complete_b64 = base64.b64encode(data_complete)
 
             #read all the comments from the fresh ogg file
-            metapipe = os.popen("vorbiscomment -l %s.ogg" % (shell().parseEscapechars(outfile)))
-            f = metapipe.read()
-            metapipe.flush()
-            metapipe.close()
+            meta_process = sp.Popen("vorbiscomment -l %s.ogg" % (shell().parseEscapechars(outfile)),
+                stdout=sp.PIPE, stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
+
+            (stdout_data, stderr_data) = meta_process.communicate()
             
             #add our coverart tag to the comments
-            metadata = f + "METADATA_BLOCK_PICTURE=" + data_complete_b64 
+            metadata = stdout_data + "METADATA_BLOCK_PICTURE=" + data_complete_b64 
 
             #rewrite the comments to the ogg file
-            metapipee = os.popen("vorbiscomment -w %s.ogg" % (shell().parseEscapechars(outfile)), 'wb')
-            metapipee.write(metadata)
+            meta_process = sp.Popen("vorbiscomment -w %s.ogg" % (shell().parseEscapechars(outfile)),
+                stdout=open(os.devnull,'wb'), stdin=sp.PIPE, stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
 
-            metapipee.flush()
-            metapipee.close()
+            meta_process.communicate(metadata)
 
 
 #Class that deals with FLAC
@@ -298,8 +297,14 @@ class mp3:
         #converted to be displayed
         print(shell().parseEscapechars(infile))
 
-        os.system("%sffmpeg -loglevel panic -i %s -y -c:v copy %s %s.mp3" % (lamepath, shell().parseEscapechars(infile), lameopts, shell().parseEscapechars(outfile)))
+        conversion_process = sp.Popen("%sffmpeg -loglevel panic -i %s -y -c:v copy %s %s.mp3" % (
+            lamepath,
+            shell().parseEscapechars(infile),
+            lameopts,
+            shell().parseEscapechars(outfile)),
+            stdout=open(os.devnull,'wb'), stdin=open(os.devnull,'wb'), stderr=open(os.devnull,'wb'), shell=True, preexec_fn=preexec_function)
 
+        conversion_process.communicate()
 
 
 #END OF CLASSES, Main body of code follows:
@@ -548,7 +553,16 @@ except(IndexError):
 
 #end command line checking
 
+def signal_handler(signal, frame):
+    global stop_conversion
+
+    print("Stopping conversion...")
+    stop_conversion = True
+
 #start main code
+
+stop_conversion = False
+signal.signal(signal.SIGINT, signal_handler)
 
 #create instances of classes
 mp3Class = mp3()
@@ -592,7 +606,7 @@ x = 0 #temporary variable, only to keep track of number of files we have done
 #we need three threads in total
 opts['threads'] = int(opts['threads']) + 1
 
-while len(filelist) != 0: #while the length of the list is not 0 (i.e. not empty)
+while len(filelist) != 0 and not stop_conversion: #while the length of the list is not 0 (i.e. not empty)
     #remove and return the first element in the list
     current_file = filelist.pop()
 
@@ -612,5 +626,8 @@ while len(filelist) != 0: #while the length of the list is not 0 (i.e. not empty
         #finished
         time.sleep(0.3)
     x += 1
+
+if stop_conversion:
+    print("Waiting for threads to finish...")
 
 #END
