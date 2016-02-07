@@ -63,6 +63,18 @@ class vorbis:
         #converted to be displayed
         print(shell().parseEscapechars(infile))
 
+
+        os.system("%sffmpeg -loglevel panic -i %s -y -vn %s %s.ogg" % (
+            oggencpath,
+            shell().parseEscapechars(infile),
+            oggencopts,
+            shell().parseEscapechars(outfile))
+            )
+
+
+        #coverart------------------------------------------------------
+
+        #exctract coverart as jpeg and read it in
         jpegpipe = os.popen("%sffmpeg -loglevel panic -i %s -an -c:v copy -f mjpeg - " %
             (
             oggencpath,
@@ -76,7 +88,7 @@ class vorbis:
         jpegpipe.close()
 
         if len(data) > 0:
-            #write the header now
+            #write the header that is required for the binary data
             int_picturetype = 3 #3 for cover(front)
             str_mime = b"image/jpeg" #mime string - assume jpeg
             str_description = b"" #description string - assume empty
@@ -97,18 +109,25 @@ class vorbis:
                     int_index,
                     len(data),
                     )
+            #merge header with binary data and convert everything to base64
             data_complete = data_header + data
             data_complete_b64 = base64.b64encode(data_complete)
-        else:
-            data_complete_b64 = ""
 
-        os.system("%sffmpeg -loglevel panic -i %s -metadata METADATA_BLOCK_PICTURE=\"%s\" -y -vn %s %s.ogg" % (
-            oggencpath,
-            shell().parseEscapechars(infile),
-            data_complete_b64,
-            oggencopts,
-            shell().parseEscapechars(outfile))
-            )
+            #read all the comments from the fresh ogg file
+            metapipe = os.popen("vorbiscomment -l %s.ogg" % (shell().parseEscapechars(outfile)))
+            f = metapipe.read()
+            metapipe.flush()
+            metapipe.close()
+            
+            #add our coverart tag to the comments
+            metadata = f + "METADATA_BLOCK_PICTURE=" + data_complete_b64 
+
+            #rewrite the comments to the ogg file
+            metapipee = os.popen("vorbiscomment -w %s.ogg" % (shell().parseEscapechars(outfile)), 'wb')
+            metapipee.write(metadata)
+
+            metapipee.flush()
+            metapipee.close()
 
 
 #Class that deals with FLAC
