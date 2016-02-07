@@ -67,12 +67,17 @@ class vorbis:
         #converted to be displayed
         print(shell().parseEscapechars(infile))
 
+        #when option is enabled show stderr of processes in stdout
+        errpipe = sp.DEVNULL
+        if opts['stderr']:
+            errpipe = sp.STDOUT
+
         conversion_process = sp.Popen("%sffmpeg -loglevel panic -i %s -y -vn %s %s.ogg" % (
                 oggencpath,
                 shell().parseEscapechars(infile),
                 oggencopts,
                 shell().parseEscapechars(outfile)),
-            stdout=sp.DEVNULL, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
+            stdout=sp.DEVNULL, stdin=sp.DEVNULL, stderr=errpipe, shell=True, preexec_fn=preexec_function)
 
         conversion_process.communicate()
 
@@ -82,7 +87,7 @@ class vorbis:
         jpeg_process = sp.Popen("%sffmpeg -loglevel panic -i %s -an -c:v copy -f mjpeg - " % (
                 oggencpath,
                 shell().parseEscapechars(infile)),
-            stdout=sp.PIPE, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
+            stdout=sp.PIPE, stdin=sp.DEVNULL, stderr=errpipe, shell=True, preexec_fn=preexec_function)
 
         (stdout_data, stderr_data) = jpeg_process.communicate()
         data = bytearray(stdout_data)
@@ -115,7 +120,7 @@ class vorbis:
 
             #read all the comments from the fresh ogg file
             meta_process = sp.Popen("vorbiscomment -R -l %s.ogg" % (shell().parseEscapechars(outfile)),
-                stdout=sp.PIPE, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
+                stdout=sp.PIPE, stdin=sp.DEVNULL, stderr=errpipe, shell=True, preexec_fn=preexec_function)
 
             (stdout_data, stderr_data) = meta_process.communicate()
             
@@ -124,7 +129,7 @@ class vorbis:
 
             #rewrite the comments to the ogg file
             meta_process = sp.Popen("vorbiscomment -R -w %s.ogg" % (shell().parseEscapechars(outfile)),
-                stdout=sp.DEVNULL, stdin=sp.PIPE, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
+                stdout=sp.DEVNULL, stdin=sp.PIPE, stderr=errpipe, shell=True, preexec_fn=preexec_function)
 
             meta_process.communicate(metadata)
 
@@ -297,12 +302,17 @@ class mp3:
         #converted to be displayed
         print(shell().parseEscapechars(infile))
 
+        #when option is enabled show stderr of processes in stdout
+        errpipe = sp.DEVNULL
+        if opts['stderr']:
+            errpipe = sp.STDOUT
+
         conversion_process = sp.Popen("%sffmpeg -loglevel panic -i %s -y -c:v copy %s %s.mp3" % (
             lamepath,
             shell().parseEscapechars(infile),
             lameopts,
             shell().parseEscapechars(outfile)),
-            stdout=sp.DEVNULL, stdin=sp.DEVNULL, stderr=sp.DEVNULL, shell=True, preexec_fn=preexec_function)
+            stdout=sp.DEVNULL, stdin=sp.DEVNULL, stderr=errpipe, shell=True, preexec_fn=preexec_function)
 
         conversion_process.communicate()
 
@@ -483,6 +493,7 @@ opts = {
 "oggencopts":"qscale:a 9", # your vorbis encoder settings
 "flacopts":"-q 8", #your flac encoder settings
 "include_root":False,
+"stderr":False,
 }
 
 #This area deals with checking the command line options,
@@ -506,6 +517,9 @@ parser.add_option("-o","--outdir",dest="outdir",metavar="DIR",
       default="./"),
 parser.add_option("-f","--force",dest="overwrite",action="store_true",
       help="Force overwrite of existing files (by default we skip)",
+      default=False),
+parser.add_option("-e","--stderr",dest="stderr",action="store_true",
+      help="Print stderr messages of the child processes to stdout",
       default=False),
 parser.add_option("-y","--overwrite_old",dest="overwrite_old",action="store_true",
       help="Force overwrite of existing files if the timestamp of the source has changed since (timestamp says it is newer)",
