@@ -48,6 +48,7 @@ import subprocess as sp
 import base64
 import struct
 import signal
+import shutil
 
 #CODE
 
@@ -465,6 +466,12 @@ def generateLameMeta(mp3file):
     return mp3Class.generateLameMeta(metastring)
     #Metadata population complete
 
+def signal_handler(signal, frame):
+    global stop_conversion
+
+    print("Stopping conversion...")
+    stop_conversion = True
+
 #END Functions
 
 
@@ -567,11 +574,13 @@ except(IndexError):
 
 #end command line checking
 
-def signal_handler(signal, frame):
-    global stop_conversion
+#dependency checking
+if opts['mode'] == "vorbis":
+    if shutil.which("vorbiscomment") == None:
+        print("vorbiscomment is not available on your system")
+        sys.exit(-1)
+#end dependency checking
 
-    print("Stopping conversion...")
-    stop_conversion = True
 
 #start main code
 
