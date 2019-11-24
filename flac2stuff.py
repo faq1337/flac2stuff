@@ -647,7 +647,7 @@ while len(filelist) != 0 and not stop_conversion: #while the length of the list 
     while threading.activeCount() == opts['threads']:
         #just sit and wait. we check every tenth second to see if it has
         #finished
-        time.sleep(0.3)
+        time.sleep(0.1)
     x += 1
 
 if stop_conversion:
